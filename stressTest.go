@@ -30,7 +30,7 @@ func main(){
 	for {
 		fmt.Println("Sending Request")
 		go sendPing()
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 	}
 
 	<-c

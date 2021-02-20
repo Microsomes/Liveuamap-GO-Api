@@ -54,7 +54,13 @@ func handlerRequests() {
 	myRouter.HandleFunc("/item/{id}", returnSingleMaep)
 	myRouter.HandleFunc("/update/{id}", updateMaep).Methods("PUT")
 	myRouter.HandleFunc("/total",returnTotal)
+	myRouter.HandleFunc("/loaderio-7a46e6ccb1dbbc0fe1eca0f5848e3d8c",handlerLoaderio)
 	log.Fatal(http.ListenAndServe(":10000", myRouter))
+}
+
+
+func handlerLoaderio(w http.ResponseWriter, r*http.Request){
+	fmt.Fprint(w,"loaderio-7a46e6ccb1dbbc0fe1eca0f5848e3d8c\n")
 }
 
 func returnTotal(w http.ResponseWriter, r*http.Request){
