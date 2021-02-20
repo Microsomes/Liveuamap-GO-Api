@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-
 	"github.com/gorilla/mux"
 )
 
@@ -60,19 +59,18 @@ func handlerRequests() {
 
 
 func handlerLoaderio(w http.ResponseWriter, r*http.Request){
+	defer r.Body.Close()
 	fmt.Fprint(w,"loaderio-7a46e6ccb1dbbc0fe1eca0f5848e3d8c\n")
 }
 
 func returnTotal(w http.ResponseWriter, r*http.Request){
 	defer r.Body.Close()
-
 	total := len(Maeps)
 	fmt.Fprint(w,total)
 }
 
 func returnSingleMaep(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-
 	vars := mux.Vars(r)
 	var key = vars["id"]
 	id, err := strconv.Atoi(key)
@@ -93,7 +91,6 @@ func returnSingleMaep(w http.ResponseWriter, r *http.Request) {
 
 func updateMaep(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-
 	vars := mux.Vars(r)
 	var key = vars["id"]
 	id, err := strconv.Atoi(key)
@@ -104,7 +101,6 @@ func updateMaep(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
 	//the id is bigger then what exists
 	if id > len(Maeps) {
 		json.NewEncoder(w).Encode(&ErrorStruct{
@@ -113,50 +109,36 @@ func updateMaep(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
 	inQuestion := Maeps[id]
-
 	resBody, err := ioutil.ReadAll(r.Body)
-
 	if err != nil {
-
 		json.NewEncoder(w).Encode(&ErrorStruct{
 			Status: "ERR",
 			Msg:    "Something wrong with the json body",
 		})
 		return
 	}
-
 	var newData MaepLog
 	json.Unmarshal(resBody, &newData)
-
 	fmt.Println("new:", newData)
-
 	fmt.Println("old:", inQuestion)
-
 	//replace old with new
-
 	Maeps[id] = newData
-
 	json.NewEncoder(w).Encode(&ErrorStruct{
 		Status: "OK",
 		Msg:    "Updated",
 	})
-
 }
 
 func createNewMaep(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-
 	reqBody, err := ioutil.ReadAll(r.Body)
-
 	if err != nil {
 		json.NewEncoder(w).Encode(&ErrorStruct{
 			Status: "ERR",
 			Msg:    "Something wrong with the json body",
 		})
 	}
-
 	var maep MaepLog
 	json.Unmarshal(reqBody, &maep)
 	var lastID int = Maeps[len(Maeps)-1].Id
@@ -164,10 +146,7 @@ func createNewMaep(w http.ResponseWriter, r *http.Request) {
 	maep.Created = time.Now()
 	Maeps = append(Maeps, maep)
 	fmt.Println(maep)
-
 	fmt.Fprint(w, lastID+1)
-
-
 }
 
 func main() {

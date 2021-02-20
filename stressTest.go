@@ -8,33 +8,42 @@ import (
 	"time"
 )
 
-func sendPing(){
+func sendPing(url string,ch chan<-string){
 
  		data := map[string]string{"Title": "from stress test", "Desc": "Desc hello"}
 		jsonValue, _ := json.Marshal(data)
 
-		_, err := http.Post("http://139.162.193.140:10000/create", "application/json", bytes.NewBuffer(jsonValue))
-
-		if err != nil {
+		respBody, err := http.Post(url, "application/json", bytes.NewBuffer(jsonValue))
+ 		if err != nil {
 			fmt.Println("Error")
+			fmt.Println(err)
+			ch<- "error"
+			return
 		}
 
+		respBody.Body.Close()
+
+
+
+	ch<- "done"
 }
 
 func main(){
 
+	localURL:= "http://localhost:10000/create"
+	networkURL:= "http://139.162.193.140:10000/create"
 
-	c:= make(chan int)
+	fmt.Println(localURL,networkURL)
 
+	c:= make(chan string)
 
-	for {
-		fmt.Println("Sending Request")
-		go sendPing()
-		time.Sleep(1 * time.Second)
-	}
-
-	<-c
-
+		for {
+ 			go sendPing(localURL, c)
+			time.Sleep(1 * time.Millisecond)
+			fmt.Println("--------")
+ 			fmt.Println("Took")
+ 			fmt.Println(<-c)
+		}
 
 
 }
