@@ -27,10 +27,14 @@ type ErrorStruct struct {
 var Maeps []MaepLog
 
 func homePage(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	fmt.Fprint(w, "GO")
 }
 
 func returnAllMaepsHandler(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	type AllCollection struct {
 		Total int       `json:Total`
 		Data  []MaepLog `json:Data`
@@ -54,11 +58,15 @@ func handlerRequests() {
 }
 
 func returnTotal(w http.ResponseWriter, r*http.Request){
+	defer r.Body.Close()
+
 	total := len(Maeps)
 	fmt.Fprint(w,total)
 }
 
 func returnSingleMaep(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	vars := mux.Vars(r)
 	var key = vars["id"]
 	id, err := strconv.Atoi(key)
@@ -78,6 +86,8 @@ func returnSingleMaep(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateMaep(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	vars := mux.Vars(r)
 	var key = vars["id"]
 	id, err := strconv.Atoi(key)
@@ -130,6 +140,8 @@ func updateMaep(w http.ResponseWriter, r *http.Request) {
 }
 
 func createNewMaep(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	reqBody, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
@@ -148,6 +160,8 @@ func createNewMaep(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(maep)
 
 	fmt.Fprint(w, lastID+1)
+
+
 }
 
 func main() {
