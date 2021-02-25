@@ -426,7 +426,13 @@ func setUpImport(db *sql.DB, a chan int){
 }
 
 func dbConn()*sql.DB{
-	var db, err = sql.Open("mysql", "root:root@tcp(127.0.0.1:3306)/maeplet")
+	db_host:=os.Getenv("DB_HOST")
+ 	db_username := os.Getenv("DB_USERNAME")
+ 	db_password := os.Getenv("DB_PASSWORD")
+	db_name := os.Getenv("DB_NAME")
+	connectionString:= db_username+":"+db_password+"@tcp(127.0.0.1:3306)/"+db_name
+ 	fmt.Println(db_host,db_username,db_password)
+	var db, err = sql.Open("mysql", connectionString)
 	if err !=nil{
 		panic(err.Error())
 	}
@@ -871,7 +877,6 @@ func getAllLiveDates(w http.ResponseWriter, r*http.Request){
 
 
 func main() {
-
 	//set up db connection
 	os.Setenv("DB_HOST","localhost")
 	os.Setenv("DB_PORT","3306")
