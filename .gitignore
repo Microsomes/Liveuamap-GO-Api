@@ -3,4 +3,4 @@
 liveuamapdata
 
 stressTest.go
-stressTest.exe
+../stresstest/stressTest.exe

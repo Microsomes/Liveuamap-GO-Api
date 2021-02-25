@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -68,6 +69,10 @@ func handlerRequests() {
 	myRouter.HandleFunc("/liveuamap/getdate/{date}/{pageNo}",getDataFromDateLiveUaPagi)
 	myRouter.HandleFunc("/liveuamap/gettags",getAllTags)
 	myRouter.HandleFunc("/liveuamap/getdate/{date}/{tag}",getDataByTagUsingDate)
+	myRouter.HandleFunc("/liveuamap/post/{id}",getLiveUamapItem)
+
+	//search functionalities
+	myRouter.HandleFunc("/liveuamap/searchtitle/{query}",searchLiveuamapSearchText)
 
 	myRouter.HandleFunc("/liveuamap/install",installlive)
 
@@ -75,12 +80,154 @@ func handlerRequests() {
 }
 
 
+
+func extractQuery(r *http.Request) string {
+	vars := mux.Vars(r)
+	var querystr= vars["query"]
+	return  querystr
+}
+
+func searchLiveuamapSearchText(w http.ResponseWriter, r*http.Request){
+	query:=extractQuery(r)
+	db:= dbConn()
+	defer db.Close()
+	selDB,err:= db.Query("SELECT id,Title,PostDate FROM LIVEUAMAP_V1 WHERE Title like ?","%"+query+"%")
+	if err !=nil{
+		fmt.Fprint(w,"Error searching")
+	}
+	type postR struct {
+		PostID int
+		Title string
+		PostDate string
+		MoreDetails string
+	}
+	var allPosts []postR
+	for selDB.Next(){
+		var id int
+		var title string
+		var PostDate string
+		selDB.Scan(&id,&title,&PostDate)
+		allPosts=append(allPosts,postR{
+			PostID: id,
+			Title: title,
+			PostDate: PostDate,
+			MoreDetails: "/liveuamap/post/"+strconv.Itoa(id),
+		})
+	}
+	type stdReply struct {
+		Status string
+		Msg string
+		Total int
+		Data []postR
+	}
+	json.NewEncoder(w).Encode(&stdReply{
+		Status: "OK",
+		Msg: "All Titles with their id, more details can be available at the more details end point",
+		Total: len(allPosts),
+		Data: allPosts,
+	})
+ }
+
+
+func getMetaLiveuamap(metaID int,c chan interface{}){
+	db:=dbConn()
+	defer db.Close()
+	res:= db.QueryRow("SELECT * FROM liveuamap_meta_v1 WHERE id=?",metaID)
+	var id int
+	var keym string
+	var valm string
+	err:= res.Scan(&id,&keym,&valm)
+	if err!=nil{
+		c<- ErrorStruct{}
+	}
+	//it worked
+	type stdMeta struct {
+		Id int
+		Keym string
+		Valm string
+	}
+	c<-stdMeta{
+		Id: id,
+		Keym: keym,
+		Valm: valm,
+	}
+ }
+
+func getLiveUamapItem(w http.ResponseWriter, r*http.Request){
+	id:= extractID(r)
+	db:= dbConn()
+
+	var selDB *sql.Row=  db.QueryRow("SELECT * FROM LIVEUAMAP_V1 WHERE id=?",id)
+	var postid int
+	var title string
+	var postImage string
+	var source string
+	var postDate string
+	var timeAgo string
+	var postLink string
+	var postIcon string
+	var metaID int
+	err:= selDB.Scan(&postid, &title,&postImage,&source,&postDate,&timeAgo,&postLink,&postIcon,&metaID)
+
+	c:= make(chan interface{})
+
+	if reflect.TypeOf(c).Name() =="ErrorStruct"{
+		json.NewEncoder(w).Encode(&ErrorStruct{
+			Status: "ERR",
+			Msg: "Invalid meta id",
+		})
+		return
+	}
+	go getMetaLiveuamap(metaID,c)
+	//grabs the meta id
+	metaData:=<-c
+
+
+	fmt.Println(metaData)
+
+
+	if err!=nil{
+		json.NewEncoder(w).Encode(&ErrorStruct{
+			Status: "ERR",
+			Msg: err.Error(),
+		})
+	}
+
+	type stdReply struct {
+		Id int
+		Title string
+		PostImage string
+		Source string
+		PostDate string
+		TimeAgo string
+		PostLink string
+		PostIcon string
+		MetaID int
+		MetaData interface{}
+	}
+	json.NewEncoder(w).Encode(&stdReply{
+		Id: postid,
+		Title: title,
+		PostImage: postImage,
+		Source: source,
+		PostDate: postDate,
+		TimeAgo: timeAgo,
+		PostLink: postLink,
+		PostIcon: postIcon,
+		MetaID: metaID,
+		MetaData: metaData,
+	})
+	defer db.Close()
+}
+
 func getSchemaLiveuamap(w http.ResponseWriter, r*http.Request){
 	var data =map[string]string{
 		"Status":"ok",
+		"/searchtitle/trump":"<- searches for the database title for the word trump returns the title and the post id",
 		"/getdates":"<-returns all the current dates in system",
 		"/install":"<-dumps all records and re-imports new news data, ps dont spam this. Will be removed later",
 		"/getdate/01-2-2021":"<-Returns the post of a specified date, example date added, you can get all the available dates from /getdates",
+		"/post/2":"<- returns post that is of the id 2, now you can try guess the id you want or just use getdate to grab ids of posts of a certain id",
 	}
 	json.NewEncoder(w).Encode(data)
 }
@@ -220,9 +367,6 @@ func setUpImport(db *sql.DB, a chan int){
 				"November",
 				"December",
 			}
-
-
-
 
 			timeSplit:= strings.Split(d.PostDate," ")
 			tm:= timeSplit[1]
@@ -557,6 +701,19 @@ func getDateLive(date string, page int, db *sql.DB, c chan interface{}){
 	 return newDate
  }
 
+
+func extractID(r *http.Request) int {
+	vars := mux.Vars(r)
+	var pageNo= vars["id"]
+	p,err :=strconv.Atoi(pageNo)
+	if err!=nil{
+		//todo better logging needs to be added to catch this error
+		fmt.Println("Error extracting pageNo")
+		return 0
+	}
+	return  p
+}
+
  func extractPageNo(r *http.Request) int {
  	vars := mux.Vars(r)
  	var pageNo= vars["pageNo"]
@@ -714,57 +871,16 @@ func getAllLiveDates(w http.ResponseWriter, r*http.Request){
 
 
 func main() {
+
+	//set up db connection
+	os.Setenv("DB_HOST","localhost")
+	os.Setenv("DB_PORT","3306")
+	os.Setenv("DB_USERNAME","root")
+	os.Setenv("DB_PASSWORD","root")
+	os.Setenv("DB_NAME","maeplet")
+
 	Maeps = []MaepLog{
 		MaepLog{Title: "Trump elected again", Desc: "Republicans move to nominate trump again", Id: 0},
 	}
-
-
-	//files, err := ioutil.ReadDir("./liveuamapdata")
-	//
-	//if err !=nil{
-	//	fmt.Println(err)
-	//}
-	//
-	//for _,f :=range files{
-	//	 plan,err := ioutil.ReadFile("./liveuamapdata/"+f.Name()+"/0all.json")
-	//
-	//	 if err!=nil{
-	//	 	fmt.Println(err)
-	//	 }
-	//
-	//	 type meta struct{
-	//		 Coord string
-	//		 Tags []string
-	//	 }
-	//
-	//	 type postItem struct{
-	//		 Title string  `json:"title"`
-	//		 PostImage string
-	//		 Source string
-	//		 PostDate string
-	//		 TimeAgo string
-	//		 PostLink string
-	//		 PostIcon string
-	//		 Meta meta
-	//	 }
-	//
-	//	 var data struct{
-	//		 TotalPosts  int `json:"TotalPosts"`
- 	//		 Posts []postItem  `json:"posts"`
-	//	 }
-	//
-	//	 var ere2= json.Unmarshal(plan,&data)
-	//
-	//	 if ere2!=nil{
-	//	 	fmt.Println("Error parsing file")
-	//	 	fmt.Println(ere2)
-	//	 }
-	//
-	//	 fmt.Println(data.Posts[0].Meta.Tags)
-	//
-	//
-	//}
-
-
 	handlerRequests()
 }
