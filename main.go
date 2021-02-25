@@ -91,7 +91,7 @@ func searchLiveuamapSearchText(w http.ResponseWriter, r*http.Request){
 	query:=extractQuery(r)
 	db:= dbConn()
 	defer db.Close()
-	selDB,err:= db.Query("SELECT id,Title,PostDate FROM LIVEUAMAP_V1 WHERE Title like ?","%"+query+"%")
+	selDB,err:= db.Query("SELECT id,Title,PostDate FROM liveuamap_v1 WHERE Title like ?","%"+query+"%")
 	if err !=nil{
 		fmt.Fprint(w,"Error searching")
 	}
@@ -157,7 +157,7 @@ func getLiveUamapItem(w http.ResponseWriter, r*http.Request){
 	id:= extractID(r)
 	db:= dbConn()
 
-	var selDB *sql.Row=  db.QueryRow("SELECT * FROM LIVEUAMAP_V1 WHERE id=?",id)
+	var selDB *sql.Row=  db.QueryRow("SELECT * FROM liveuamap_v1 WHERE id=?",id)
 	var postid int
 	var title string
 	var postImage string
@@ -235,7 +235,7 @@ func getSchemaLiveuamap(w http.ResponseWriter, r*http.Request){
 
 func getTotalRecordsLiveUa(w http.ResponseWriter, r*http.Request){
 	db:= dbConn()
-   var dbRow  *sql.Row =	db.QueryRow("SELECT count(id) as 'total' FROM LIVEUAMAP_V1")
+   var dbRow  *sql.Row =	db.QueryRow("SELECT count(id) as 'total' FROM liveuamap_v1")
    var totalRecords int
    err:=dbRow.Scan(&totalRecords)
    if err!=nil{
